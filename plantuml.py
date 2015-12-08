@@ -50,15 +50,16 @@ import tempfile
 from subprocess import Popen, PIPE
 from zlib import adler32
 import logging
-import markdown
-from markdown.util import etree
+from ..extensions import Extension
+from ..util import etree
+from ..blockprocessors import BlockProcessor
 
 
 logger = logging.getLogger('MARKDOWN')
 
 
 # For details see https://pythonhosted.org/Markdown/extensions/api.html#blockparser
-class PlantUMLBlockProcessor(markdown.blockprocessors.BlockProcessor):
+class PlantUMLBlockProcessor(BlockProcessor):
     # Regular expression inspired by the codehilite Markdown plugin
     RE = re.compile(r'''::uml::
                         \s*(format=(?P<quot>"|')(?P<format>\w+)(?P=quot))?
@@ -97,7 +98,7 @@ class PlantUMLBlockProcessor(markdown.blockprocessors.BlockProcessor):
             os.makedirs(path)
 
         # Generate image from PlantUML script
-        imageurl = self.config['siteurl']+self.generate_uml_image(path, text, imgformat)
+        imageurl = self.config['siteurl']+self.generate_uml_image(self, path, text, imgformat)
         # Create image tag and append to the document
         etree.SubElement(parent, "img", src=imageurl, alt=alt, classes=classes)
 
@@ -143,7 +144,7 @@ class PlantUMLBlockProcessor(markdown.blockprocessors.BlockProcessor):
                 name = os.path.join(path, os.path.basename(name))
                 newname = os.path.join(path, "%08x" % (adler32(plantuml_code) & 0xffffffff))+imgext
 
-                if not os.path.exists(newname):
+                if os.path.exists(newname):
                     os.remove(newname)
 
                 os.rename(name, newname)
@@ -154,7 +155,7 @@ class PlantUMLBlockProcessor(markdown.blockprocessors.BlockProcessor):
 
 
 # For details see https://pythonhosted.org/Markdown/extensions/api.html#extendmarkdown
-class PlantUMLMarkdownExtension(markdown.Extension):
+class PlantUMLMarkdownExtension(Extension):
     # For details see https://pythonhosted.org/Markdown/extensions/api.html#configsettings
     def __init__(self, *args, **kwargs):
         self.config = {
